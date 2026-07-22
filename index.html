@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coordex Digital Signage Player</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #00355F;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: #ffffff;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    var PLANTILLAS = ['dolares', 'divisas', 'cheques', 'special-sale'];
+
+    var params = new URLSearchParams(window.location.search);
+    var plantilla = params.get('plantilla');
+    var sucursal = params.get('sucursal');
+
+    if (!plantilla || !sucursal) {
+      document.body.textContent = '⚠️ URL incompleta. Formato: ?sucursal=SLUG&plantilla=SLUG';
+    } else if (!PLANTILLAS.includes(plantilla)) {
+      document.body.textContent = '⚠️ Plantilla "' + plantilla + '" no encontrada.';
+    } else {
+      window.location.replace(plantilla + '.html?' + params.toString());
+    }
+  </script>
+</body>
+</html>
