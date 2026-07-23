@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Special Sale</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  font-family: 'Raleway', sans-serif;
+}
+
+#canvas {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  background-image: url('img/fondo_special_sale.png');
+  background-size: 1080px 1920px;
+  background-repeat: no-repeat;
+}
+
+.valor {
+  position: absolute;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  color: #E73646;
+  line-height: 1;
+  text-align: center;
+  font-size: 110px;
+}
+
+#v-special-venta { top: 1115px; left: 230px; width: 620px; }
+
+#status {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #00355F;
+  color: #fff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  text-align: center;
+  z-index: 100;
+}
+
+.status-icon { font-size: 3em; margin-bottom: 20px; }
+
+@keyframes valor-flash {
+  0%   { color: #E73646; transform: scale(1.15); }
+  100% { color: #000000; transform: scale(1); }
+}
+.flash { animation: valor-flash 0.6s ease-out; }
+</style>
+</head>
+<body>
+
+<div id="canvas">
+  <div class="valor" id="v-special-venta" data-item="billete-1-dolar" data-field="venta">—</div>
+</div>
+
+<div id="status">
+  <div class="status-icon"></div>
+  <div id="status-message">Conectando...</div>
+</div>
+
+<script>
+var CONFIG = {
+  url: 'https://xafsheawelazbwacfjyp.supabase.co',
+  key: 'sb_publishable_Mp3ZQMcji5hUYP2h3zLJeQ_9LBhRYUT'
+};
+
+var params = new URLSearchParams(window.location.search);
+var sucursalSlug = params.get('sucursal');
+var plantillaSlug = params.get('plantilla');
+var db = supabase.createClient(CONFIG.url, CONFIG.key);
+
+function formatValor(value) {
+  if (value === null || value === undefined) return '—';
+  var num = parseFloat(value);
+  return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+}
+
+function showStatus(icon, message) {
+  var el = document.getElementById('status');
+  el.style.display = 'flex';
+  el.querySelector('.status-icon').textContent = icon;
+  el.querySelector('#status-message').textContent = message;
+}
+
+function hideStatus() {
+  document.getElementById('status').style.display = 'none';
+}
+
+function handlePriceUpdate(payload) {
+  var row = payload.new;
+  var els = document.querySelectorAll('[data-item-id="' + row.item_id + '"]');
+  els.forEach(function(el) {
+    var field = el.dataset.field;
+    if (row[field] === undefined || row[field] === null) return;
+    var formatted = formatValor(row[field]);
+    if (el.textContent === formatted) return;
+    el.textContent = formatted;
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  });
+}
+
+async function init() {
+  if (!sucursalSlug || !plantillaSlug) {
+    showStatus('⚠️', 'URL incompleta. Formato: ?sucursal=SLUG&plantilla=SLUG');
+    return;
+  }
+
+  showStatus('📡', 'Conectando...');
+
+  var sucursalRes = await db.from('sucursales').select('id').eq('slug', sucursalSlug).single();
+  if (sucursalRes.error || !sucursalRes.data) {
+    showStatus('❌', 'Sucursal "' + sucursalSlug + '" no encontrada');
+    return;
+  }
+  var sucursalId = sucursalRes.data.id;
+
+  var plantillaRes = await db.from('plantillas').select('id, nombre').eq('slug', plantillaSlug).single();
+  if (plantillaRes.error || !plantillaRes.data) {
+    showStatus('❌', 'Plantilla "' + plantillaSlug + '" no encontrada');
+    return;
+  }
+  var plantillaId = plantillaRes.data.id;
+  document.title = plantillaRes.data.nombre + ' — ' + sucursalSlug;
+
+  var itemsRes = await db
+    .from('items')
+    .select('id, slug, precios(*)')
+    .eq('plantilla_id', plantillaId)
+    .order('orden');
+
+  if (itemsRes.error || !itemsRes.data) {
+    showStatus('❌', 'Error al cargar items');
+    return;
+  }
+
+  itemsRes.data.forEach(function(item) {
+    var precio = item.precios.find(function(p) { return p.sucursal_id === sucursalId; }) || {};
+    var els = document.querySelectorAll('[data-item="' + item.slug + '"]');
+    els.forEach(function(el) {
+      el.dataset.itemId = item.id;
+      var field = el.dataset.field;
+      var val = precio[field];
+      if (val !== null && val !== undefined) {
+        el.textContent = formatValor(val);
+      }
+    });
+  });
+
+  db.channel('precios-' + sucursalSlug + '-special-sale')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'precios',
+      filter: 'sucursal_id=eq.' + sucursalId
+    }, handlePriceUpdate)
+    .subscribe();
+
+  hideStatus();
+}
+
+init();
+</script>
+</body>
+</html>

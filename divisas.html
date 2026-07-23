@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Divisas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  font-family: 'Raleway', sans-serif;
+}
+
+#canvas {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  background-image: url('img/fondo_divisas.png');
+  background-size: 1080px 1724px;
+  background-repeat: no-repeat;
+}
+
+.valor {
+  position: absolute;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1;
+  text-align: center;
+}
+
+.v-divisa  { font-size: 62px; }
+.v-moneda  { font-size: 52px; }
+
+#v-euro-compra       { top: 450px;  left: 270px; width: 390px; }
+#v-euro-venta        { top: 450px;  left: 630px; width: 390px; }
+
+#v-libra-compra      { top: 595px;  left: 270px; width: 390px; }
+#v-libra-venta       { top: 595px;  left: 630px; width: 390px; }
+
+#v-cad-compra        { top: 730px;  left: 270px; width: 390px; }
+#v-cad-venta         { top: 730px;  left: 630px; width: 390px; }
+
+#v-centenario-compra { top: 1110px; left: 270px; width: 390px; }
+#v-centenario-venta  { top: 1110px; left: 630px; width: 390px; }
+
+#v-azteca-compra     { top: 1250px; left: 270px; width: 390px; }
+#v-azteca-venta      { top: 1250px; left: 630px; width: 390px; }
+
+#v-caballito-compra  { top: 1390px; left: 270px; width: 390px; }
+#v-caballito-venta   { top: 1390px; left: 630px; width: 390px; }
+
+#v-libertad-compra   { top: 1530px; left: 270px; width: 390px; }
+#v-libertad-venta    { top: 1530px; left: 630px; width: 390px; }
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1080px;
+  height: 196px;
+  background: #00355F;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 40px;
+}
+
+.footer-aviso {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 30px;
+  text-align: center;
+}
+
+.footer-horario {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 25px;
+  text-align: center;
+}
+
+.footer-contacto {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 25px;
+  text-align: center;
+}
+
+#status {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #00355F;
+  color: #fff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  text-align: center;
+  z-index: 100;
+}
+
+.status-icon { font-size: 3em; margin-bottom: 20px; }
+
+@keyframes valor-flash {
+  0%   { color: #E73646; transform: scale(1.15); }
+  100% { color: #000000; transform: scale(1); }
+}
+.flash { animation: valor-flash 0.6s ease-out; }
+</style>
+</head>
+<body>
+
+<div id="canvas">
+  <div class="valor v-divisa" id="v-euro-compra"       data-item="euro"             data-field="compra">—</div>
+  <div class="valor v-divisa" id="v-euro-venta"        data-item="euro"             data-field="venta">—</div>
+  <div class="valor v-divisa" id="v-libra-compra"      data-item="libra"            data-field="compra">—</div>
+  <div class="valor v-divisa" id="v-libra-venta"       data-item="libra"            data-field="venta">—</div>
+  <div class="valor v-divisa" id="v-cad-compra"        data-item="dolar-canadiense" data-field="compra">—</div>
+  <div class="valor v-divisa" id="v-cad-venta"         data-item="dolar-canadiense" data-field="venta">—</div>
+  <div class="valor v-moneda" id="v-centenario-compra" data-item="centenario"       data-field="compra">—</div>
+  <div class="valor v-moneda" id="v-centenario-venta"  data-item="centenario"       data-field="venta">—</div>
+  <div class="valor v-moneda" id="v-azteca-compra"     data-item="azteca"           data-field="compra">—</div>
+  <div class="valor v-moneda" id="v-azteca-venta"      data-item="azteca"           data-field="venta">—</div>
+  <div class="valor v-moneda" id="v-caballito-compra"  data-item="caballito"        data-field="compra">—</div>
+  <div class="valor v-moneda" id="v-caballito-venta"   data-item="caballito"        data-field="venta">—</div>
+  <div class="valor v-moneda" id="v-libertad-compra"   data-item="libertad"         data-field="compra">—</div>
+  <div class="valor v-moneda" id="v-libertad-venta"    data-item="libertad"         data-field="venta">—</div>
+
+  <div class="footer">
+    <div class="footer-aviso">Tipo de cambio informativo. Sujeto a cambios sin previo aviso.</div>
+    <div class="footer-horario" id="footer-horario"></div>
+    <div class="footer-contacto">www.coordexcentrocambiario.com | <span id="footer-telefono"></span></div>
+  </div>
+</div>
+
+<div id="status">
+  <div class="status-icon"></div>
+  <div id="status-message">Conectando...</div>
+</div>
+
+<script>
+var CONFIG = {
+  url: 'https://xafsheawelazbwacfjyp.supabase.co',
+  key: 'sb_publishable_Mp3ZQMcji5hUYP2h3zLJeQ_9LBhRYUT'
+};
+
+var params = new URLSearchParams(window.location.search);
+var sucursalSlug = params.get('sucursal');
+var plantillaSlug = params.get('plantilla');
+var db = supabase.createClient(CONFIG.url, CONFIG.key);
+
+function formatValor(value) {
+  if (value === null || value === undefined) return '—';
+  var num = parseFloat(value);
+  if (num >= 1000) {
+    return num.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+  return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+}
+
+function showStatus(icon, message) {
+  var el = document.getElementById('status');
+  el.style.display = 'flex';
+  el.querySelector('.status-icon').textContent = icon;
+  el.querySelector('#status-message').textContent = message;
+}
+
+function hideStatus() {
+  document.getElementById('status').style.display = 'none';
+}
+
+function handlePriceUpdate(payload) {
+  var row = payload.new;
+  var els = document.querySelectorAll('[data-item-id="' + row.item_id + '"]');
+  els.forEach(function(el) {
+    var field = el.dataset.field;
+    if (row[field] === undefined || row[field] === null) return;
+    var formatted = formatValor(row[field]);
+    if (el.textContent === formatted) return;
+    el.textContent = formatted;
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  });
+}
+
+async function init() {
+  if (!sucursalSlug || !plantillaSlug) {
+    showStatus('⚠️', 'URL incompleta. Formato: ?sucursal=SLUG&plantilla=SLUG');
+    return;
+  }
+
+  showStatus('📡', 'Conectando...');
+
+  var sucursalRes = await db.from('sucursales').select('id, footer_horario, footer_telefono').eq('slug', sucursalSlug).single();
+  if (sucursalRes.error || !sucursalRes.data) {
+    showStatus('❌', 'Sucursal "' + sucursalSlug + '" no encontrada');
+    return;
+  }
+  var sucursalId = sucursalRes.data.id;
+  if (sucursalRes.data.footer_horario) {
+    document.getElementById('footer-horario').textContent = sucursalRes.data.footer_horario;
+  }
+  if (sucursalRes.data.footer_telefono) {
+    document.getElementById('footer-telefono').textContent = sucursalRes.data.footer_telefono;
+  }
+
+  var plantillaRes = await db.from('plantillas').select('id, nombre').eq('slug', plantillaSlug).single();
+  if (plantillaRes.error || !plantillaRes.data) {
+    showStatus('❌', 'Plantilla "' + plantillaSlug + '" no encontrada');
+    return;
+  }
+  var plantillaId = plantillaRes.data.id;
+  document.title = plantillaRes.data.nombre + ' — ' + sucursalSlug;
+
+  var itemsRes = await db
+    .from('items')
+    .select('id, slug, precios(*)')
+    .eq('plantilla_id', plantillaId)
+    .order('orden');
+
+  if (itemsRes.error || !itemsRes.data) {
+    showStatus('❌', 'Error al cargar items');
+    return;
+  }
+
+  itemsRes.data.forEach(function(item) {
+    var precio = item.precios.find(function(p) { return p.sucursal_id === sucursalId; }) || {};
+    var els = document.querySelectorAll('[data-item="' + item.slug + '"]');
+    els.forEach(function(el) {
+      el.dataset.itemId = item.id;
+      var field = el.dataset.field;
+      var val = precio[field];
+      if (val !== null && val !== undefined) {
+        el.textContent = formatValor(val);
+      }
+    });
+  });
+
+  db.channel('precios-' + sucursalSlug + '-divisas')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'precios',
+      filter: 'sucursal_id=eq.' + sucursalId
+    }, handlePriceUpdate)
+    .subscribe();
+
+  hideStatus();
+}
+
+init();
+</script>
+</body>
+</html>
